@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <fstream>
-
+#include <algorithm> //max 함수를 위한
 using namespace std;
 
 //함수 프로토 타입
@@ -16,94 +16,259 @@ void readFile(char** buffer, int* size, const char* filename);
 template<class T> class Array2D
 {
 public:
-    Array2D() : mArray(0) {}
-    ~Array2D()
-    {
-        delete[] mArray;
-        mArray = 0;  //포인터에 0을 넣는 것을 버릇으로 하자
-    }
-    void setSize(int size0, int size1)
-    {
-        mSize0 = size0;
-        mSize1 = size1;
-        mArray = new T[size0 * size1];
-    }
-    T& operator()(int index0, int index1) {
-        return mArray[index1 * mSize0 + index0];
-    }
-    const T& operator()(int index0, int index1) const {
-        return mArray[index1 * mSize0 + index0];
-    }
+	Array2D() : mArray(0) {}
+	~Array2D()
+	{
+		delete[] mArray;
+		mArray = 0;  //포인터에 0을 넣는 것을 버릇으로 하자
+	}
+	void setSize(int size0, int size1)
+	{
+		mSize0 = size0;
+		mSize1 = size1;
+		mArray = new T[size0 * size1];
+	}
+	T& operator()(int index0, int index1) {
+		return mArray[index1 * mSize0 + index0];
+	}
+	const T& operator()(int index0, int index1) const {
+		return mArray[index1 * mSize0 + index0];
+	}
 private:
-    T* mArray;
-    int mSize0;
-    int mSize1;
+	T* mArray;
+	int mSize0;
+	int mSize1;
 };
 
 
 //상태 클래스
 class State {
 public:
-    State(const char* stageData, int size);
-    void update(char input);
-    void draw() const;
-    bool hasCleared() const;
+	State(const char* stageData, int size);
+	void update(char input);
+	void draw() const;
+	bool hasCleared() const;
 private:
-    enum Object {
-        OBJ_SPACE,
-        OBJ_WALL,
-        OBJ_BLOCK,
-        OBJ_MAN,
+	enum Object {
+		OBJ_SPACE,
+		OBJ_WALL,
+		OBJ_BLOCK,
+		OBJ_MAN,
 
-        OBJ_UNKNOWN,
-        OBJ_GOAL_FLAG = (1 << 7), //골 플래그
+		OBJ_UNKNOWN,
+		OBJ_GOAL_FLAG = (1 << 7), //골 플래그
 
-    };
-    void setSize(const char* stageData, int size);
+	};
+	void setSize(const char* stageData, int size);
 
-    int mWidth;
-    int mHeight;
-    Array2D<unsigned char> mObjects; //비트 연산 할 거라 unsgined char 여기까지 아껴도 된다
+	int mWidth;
+	int mHeight;
+	Array2D<unsigned char> mObjects; //비트 연산 할 거라 unsgined char 여기까지 아껴도 된다
 };
-int main()
+int main(int argc, char** argv)
 {
-    std::cout << "Hello World!\n";
+	const char* filename = "stageData.txt";
+	if (argc >= 2) {
+		filename = argv[1];
+	}
+	char* stageData;
+	int fileSize;
+	readFile(&stageData, &fileSize, filename);
+	if (!stageData) {
+		cout << "stage file could not be read." << endl;
+		return 1;
+	}
+	State* state = new State(stageData, fileSize);
+	//메인 루프
+	while (true)
+	{
+		//일단 그리기
+		state->draw();
+		//클리어체크
+		if (state->hasCleared())
+		{
+			break;//클리어 체크
+		}
+		//입력
+		cout << "a:left s:right w:up z:down. command?" << endl; //조작설명
+		char input;
+		cin >> input;
+		//갱신
+		state->update(input);
+	}
+	//축하 메세지
+	cout << "Congratulation's! you won." << endl;
+	//지우기
+	delete[] stageData;
+	stageData = 0;
+
+	//Visual studio 에서 실행할 사람을 위해 무한루프.명령어 라인에서는 Ctrl - C로 끝내주세요.
+	while (true) {
+		;
+	}
+	return 0;
 }
 
 //이하 함수 정의
 
 void readFile(char** buffer, int* size, const char* filename) {
-    ifstream in(filename);
-    if (!in) {
-        *buffer = 0;
-        *size = 0;
-    }
-    else {
-        in.seekg(0, ifstream::end);
-        *size = static_cast<int>(in.tellg());
-        in.seekg(0, ifstream::beg);
-        *buffer = new char[*size];
-        in.read(*buffer, *size);
-    }
+	ifstream in(filename);
+	if (!in) {
+		*buffer = 0;
+		*size = 0;
+	}
+	else {
+		in.seekg(0, ifstream::end);
+		*size = static_cast<int>(in.tellg());
+		in.seekg(0, ifstream::beg);
+		*buffer = new char[*size];
+		in.read(*buffer, *size);
+	}
 }
 
-void State::draw() const {
-    for (int y = 0; y < mHeight; ++y) {
-        for (int x = 0; x < mWidth; ++x) {
-            switch (mObjects(x, y)) {
-            case (OBJ_SPACE | OBJ_GOAL_FLAG): cout << '.'; break;
-            case (OBJ_WALL | OBJ_GOAL_FLAG): cout << '#'; break;
-            case (OBJ_BLOCK | OBJ_GOAL_FLAG): cout << 'O'; break;
-            case (OBJ_MAN | OBJ_GOAL_FLAG): cout << 'P'; break;
-            case OBJ_SPACE: cout << ' '; break;
-            case OBJ_WALL: cout << '#'; break;
-            case OBJ_BLOCK: cout << 'o'; break;
-            case OBJ_MAN: cout << 'p'; break;
-            }
-        }
-        cout << endl;
-    }
+State::State(const char* stageData, int size) {
+	//사이즈 측정
+	setSize(stageData, size);
+	//배열 확보
+	mObjects.setSize(mWidth, mHeight);
+	//초기값 넣기
+	for (int y = 0; y < mHeight; ++y) {
+		for (int x = 0; x < mWidth; ++x) {
+			mObjects(x, y) = OBJ_WALL; //남은 부분 벽
+		}
+	}
+	int x = 0;
+	int y = 0;
+	for (int i = 0; i < size; ++i) {
+		unsigned char t;
+		switch (stageData[i]) {
+		case '#': t = OBJ_WALL; break;
+		case ' ': t = OBJ_SPACE; break;
+		case 'o': t = OBJ_BLOCK; break;
+		case 'O': t = OBJ_BLOCK | OBJ_GOAL_FLAG; break;
+		case '.': t = OBJ_SPACE | OBJ_GOAL_FLAG; break;
+		case 'p': t = OBJ_MAN; break;
+		case 'P': t = OBJ_MAN | OBJ_GOAL_FLAG; break;
+		case '\n': x = 0; ++y; t = OBJ_UNKNOWN; break; //개행처리
+		default: t = OBJ_UNKNOWN; break;
+		}
+		if (t != OBJ_UNKNOWN) { //모를때 무시하기 위한 if문
+			mObjects(x, y) = t; //기입
+			++x;
+		}
+	}
 }
+void State::setSize(const char* stageData, int size) {
+	mWidth = mHeight = 0; //초기화
+	//현재위치
+	int x = 0;
+	int y = 0;
+	for (int i = 0; i < size; ++i) {
+		switch (stageData[i]) {
+		case '#': case ' ': case 'o': case 'O':
+		case '.': case 'p': case 'P':
+			++x;
+			break;
+		case '\n':
+			++y;
+			//최대치 갱신
+			mWidth = max(mWidth, x);
+			mHeight = max(mHeight, y);
+			x = 0;
+			break;
+		}
+	}
+}
+void State::draw() const {
+	for (int y = 0; y < mHeight; ++y) {
+		for (int x = 0; x < mWidth; ++x) {
+			switch (mObjects(x, y)) {
+			case (OBJ_SPACE | OBJ_GOAL_FLAG): cout << '.'; break;
+			case (OBJ_WALL | OBJ_GOAL_FLAG): cout << '#'; break;
+			case (OBJ_BLOCK | OBJ_GOAL_FLAG): cout << 'O'; break;
+			case (OBJ_MAN | OBJ_GOAL_FLAG): cout << 'P'; break;
+			case OBJ_SPACE: cout << ' '; break;
+			case OBJ_WALL: cout << '#'; break;
+			case OBJ_BLOCK: cout << 'o'; break;
+			case OBJ_MAN: cout << 'p'; break;
+			}
+		}
+		cout << endl;
+	}
+}
+
+void State::update(char input) {
+	//이동차분으로 변환
+	int dx = 0;
+	int dy = 0;
+	switch (input) {
+	case 'a': dx = -1; break; //좌
+	case 's': dx = 1; break; //우
+	case 'w': dy = -1; break; //위。Y는 아래가 플러스다
+	case 'z': dy = 1; break; //아래。
+	}
+	//짧은 변수명을 붙이다,참조를 억지로 사용해 보았다.const가 포함되어 있다는 점에 주의
+	const int& w = mWidth;
+	const int& h = mHeight;
+	Array2D< unsigned char >& o = mObjects;
+	//사람의 좌표로 검색
+	int x, y;
+	x = y = -1; //위험한 값
+	bool found = false;
+	for (y = 0; y < h; ++y) {
+		for (x = 0; x < w; ++x) {
+			if ((o(x, y) & ~OBJ_GOAL_FLAG) == OBJ_MAN) { //골 플래그 이외를 꺼내기 위한&~OBJ_GOAL_FLAG
+				found = true;
+				break;
+			}
+		}
+		if (found) {
+			break;
+		}
+	}
+	//이동
+	//이동후 좌표
+	int tx = x + dx;
+	int ty = y + dy;
+	//좌표의 최대 최소 체크. 분리되어 있으면 불허
+	if (tx < 0 || ty < 0 || tx >= w || ty >= h) {
+		return;
+	}
+	//A. 그 방향이 공백 또는 골인.사람이 이동.
+	if ((o(tx, ty) & ~OBJ_GOAL_FLAG) == OBJ_SPACE) {
+		o(tx, ty) = (o(tx, ty) & OBJ_GOAL_FLAG) | OBJ_MAN; //골 플래그를 저장하기 위해서 이렇게 번거로운 것이 필요해.이하도 거의 같다
+		o(x, y) = (o(x, y) & OBJ_GOAL_FLAG) | OBJ_SPACE;
+		//B. 그 방향이 상자. 그 방향의 다음 칸이 공백 또는 골이면 이동.
+	}
+	else if (o(tx, ty) == OBJ_BLOCK) {
+		//2칸이 범위 내인지 체크
+		int tx2 = tx + dx;
+		int ty2 = ty + dy;
+		if (tx2 < 0 || ty2 < 0 || tx2 >= w || ty2 >= h) { //누를 수 없다
+			return;
+		}
+		if ((o(tx2, ty2) & ~OBJ_GOAL_FLAG) == OBJ_SPACE) {
+			//차례로 교체
+			o(tx2, ty2) = (o(tx2, ty2) & OBJ_GOAL_FLAG) | OBJ_BLOCK;
+			o(tx, ty) = (o(tx, ty) & OBJ_GOAL_FLAG) | OBJ_MAN;
+			o(x, y) = (o(x, y) & OBJ_GOAL_FLAG) | OBJ_SPACE;
+		}
+	}
+}
+
+//블럭의 goal Flag가 하나라도 false라면
+//아직 클리어 안함
+bool State::hasCleared() const {
+	for (int y = 0; y < mHeight; ++y) {
+		for (int x = 0; x < mWidth; ++x) {
+			if (mObjects(x, y) == OBJ_BLOCK) { //골 플래그가 없는 그냥 블록
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
 // 프로그램 실행: <Ctrl+F5> 또는 [디버그] > [디버깅하지 않고 시작] 메뉴
 // 프로그램 디버그: <F5> 키 또는 [디버그] > [디버깅 시작] 메뉴
 
