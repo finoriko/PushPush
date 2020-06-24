@@ -4,12 +4,47 @@
 #include <iostream>
 using namespace std;
 
-char m[100]; //메모리 100바이트 밖에 사용안한다
+char m[100]; //메모리 100바이트 밖에 사용안한다.
+// 프로그램 실행: <Ctrl+F5> 또는 [디버그] > [디버깅하지 않고 시작] 메뉴
+enum Object {
+	OBJ_SPACE,
+	OBJ_WALL,
+	OBJ_GOAL,
+	OBJ_BLOCK,
+	OBJ_BLOCK_ON_GOAL,
+	OBJ_MAN,
+	OBJ_MAN_ON_GOAL,
+
+	OBJ_UNKNOWN,
+};
+//함수프로토타입
+void initializeGlobalVariables();
+void initialize();
+void draw();
+void update();
+void checkClear();
+
 int main()
 {
     std::cout << "Hello World!\n";
 }
-
+void draw() {
+	for (m[0] = 0; m[0] < m[19]; ++m[0]) {
+		for (m[1] = 0; m[1] < m[18]; ++m[1]) {
+			m[2] = m[20 + m[0] * m[18] + m[1]];
+			switch (m[2]) {
+			case OBJ_SPACE: cout << ' '; break;
+			case OBJ_WALL: cout << '#'; break;
+			case OBJ_GOAL: cout << '.'; break;
+			case OBJ_BLOCK: cout << 'o'; break;
+			case OBJ_BLOCK_ON_GOAL: cout << 'O'; break;
+			case OBJ_MAN: cout << 'p'; break;
+			case OBJ_MAN_ON_GOAL: cout << 'P'; break;
+			}
+		}
+		cout << endl;
+	}
+}
 // 프로그램 실행: <Ctrl+F5> 또는 [디버그] > [디버깅하지 않고 시작] 메뉴
 // 프로그램 디버그: <F5> 키 또는 [디버그] > [디버깅 시작] 메뉴
 
